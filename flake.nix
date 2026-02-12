@@ -27,10 +27,10 @@
             final.imlib2
             final.freetype
             final.harfbuzz
-            final.xorg.libX11
-            final.xorg.libXft
-            final.xorg.libXrender
-            final.xorg.libXcursor
+            final.libX11
+            final.libXft
+            final.libXrender
+            final.libXcursor
             final.fontconfig
           ];
 

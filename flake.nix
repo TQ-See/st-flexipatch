@@ -11,19 +11,15 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
-      # 1. Overlay: Logika kompilasi otomatis ada di sini
+      # 1. Overlay: Tetap sama, untuk menambah 'st-flexipatch' ke dalam pkgs
       overlays.default = (final: prev: {
         st-flexipatch = prev.st.overrideAttrs (oldAttrs: {
           src = self;
-
-          # Alat bantu saat kompilasi (compiler, pkg-config)
-          nativeBuildInputs = oldAttrs.nativeBuildInputs ++ [ 
+          nativeBuildInputs = (oldAttrs.nativeBuildInputs or []) ++ [ 
             final.pkg-config 
             final.gnumake 
           ];
-
-          # Library yang dibutuhkan (Gabungan shell.nix + Harfbuzz)
-          buildInputs = [
+          buildInputs = (oldAttrs.buildInputs or []) ++ [
             final.imlib2
             final.freetype
             final.harfbuzz
@@ -33,14 +29,11 @@
             final.libXcursor
             final.fontconfig
           ];
-
-          # Memaksa instalasi ke direktori Nix Store ($out)
-          # Ini menggantikan PREFIX=$HOME/.local kamu dulu
           installFlags = [ "PREFIX=$(out)" ];
         });
       });
 
-      # 2. NixOS Module: Untuk install system-wide (di configuration.nix)
+      # 2. NixOS Module
       nixosModules.default = { pkgs, config, lib, ... }: {
         options.programs.st-flexipatch.enable = lib.mkEnableOption "st-flexipatch terminal";
         config = lib.mkIf config.programs.st-flexipatch.enable {
@@ -49,7 +42,7 @@
         };
       };
 
-      # 3. Home Manager Module: Untuk install per-user (di home.nix)
+      # 3. Home Manager Module
       homeManagerModules.default = { pkgs, config, lib, ... }: {
         options.programs.st-flexipatch.enable = lib.mkEnableOption "st-flexipatch terminal";
         config = lib.mkIf config.programs.st-flexipatch.enable {
@@ -58,12 +51,17 @@
         };
       };
 
-      # 4. Default Package: Agar bisa 'nix run github:TQ-See/st-flexipatch'
+      # 4. Perbaikan Packages: Langsung ambil derivasinya, bukan set-nya
       packages = forAllSystems (system: 
         let 
-          pkgs = nixpkgs.legacyPackages.${system};
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ self.overlays.default ];
+          };
         in {
-          default = pkgs.callPackage ({ st, ... }: self.overlays.default pkgs pkgs) {};
+          # Sekarang 'default' adalah paket st-flexipatch itu sendiri
+          default = pkgs.st-flexipatch; 
+          st-flexipatch = pkgs.st-flexipatch;
         }
       );
     };
